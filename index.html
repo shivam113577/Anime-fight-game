@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>ANIME LEGENDS: MONSTER WAR</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#080b18;color:white;font-family:Arial,sans-serif;overflow:hidden}
+#game{position:fixed;inset:0}
+canvas{display:block}
+#logo{position:absolute;top:12px;width:100%;text-align:center;font-weight:1000;font-size:clamp(20px,5vw,36px);color:#00f5ff;text-shadow:0 0 10px #008cff,2px 3px #a000ff;pointer-events:none}
+#hud{position:absolute;top:65px;left:12px;right:12px;display:flex;justify-content:space-between;gap:12px}
+.panel{background:#080b18dd;border:1px solid #00eaff;border-radius:10px;padding:9px;width:46%;box-shadow:0 0 12px #007bff55}
+.name{font-size:12px;font-weight:bold;margin-bottom:6px}
+.bar{height:13px;background:#292d40;border-radius:8px;overflow:hidden}
+.fill{height:100%;width:100%;background:linear-gradient(90deg,#00ff87,#b7ff00);transition:width .2s}
+.enemyfill{background:linear-gradient(90deg,#ff1744,#ff8a00)}
+#level{position:absolute;top:155px;width:100%;text-align:center;font-size:16px;font-weight:bold;text-shadow:0 2px 5px black}
+#message{position:absolute;top:35%;width:100%;text-align:center;font-size:25px;font-weight:900;text-shadow:0 0 15px #00eaff;pointer-events:none}
+#start{position:absolute;inset:0;background:linear-gradient(#050816d9,#11052bee);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:22px}
+#start h1{font-size:clamp(28px,7vw,48px);color:#00f5ff;text-shadow:0 0 18px #0077ff;margin:8px}
+#start p{line-height:1.7;color:#e0e7ff;max-width:420px}
+button{border:1px solid #62faff;background:linear-gradient(135deg,#073d82,#6a11cb);color:white;font-weight:bold;border-radius:12px;padding:14px 18px;font-size:14px;cursor:pointer;touch-action:manipulation;box-shadow:0 0 12px #008cff66}
+#start button{font-size:19px;padding:15px 35px}
+#controls{position:absolute;bottom:16px;left:12px;right:12px;display:flex;justify-content:space-between;align-items:end;pointer-events:none}
+#move{display:grid;grid-template-columns:54px 54px 54px;grid-template-rows:54px 54px;gap:4px;pointer-events:auto}
+#move button{padding:0;font-size:22px;background:#101d36dc}
+#left{grid-column:1;grid-row:2}
+#right{grid-column:3;grid-row:2}
+#jump{grid-column:2;grid-row:1}
+#actions{display:grid;grid-template-columns:repeat(2,62px);gap:7px;pointer-events:auto}
+#actions button{height:55px;padding:4px;font-size:12px}
+#attack{background:linear-gradient(135deg,#a90022,#ff5828)}
+#special{background:linear-gradient(135deg,#5815bc,#e000ff)}
+#ultimate{grid-column:1/3;width:100%;background:linear-gradient(135deg,#a35c00,#ffcf00);color:#1b1020}
+#bottominfo{position:absolute;bottom:145px;width:100%;text-align:center;font-size:11px;color:#d0d8ff;pointer-events:none}
+@media(min-width:800px){
+#controls{left:calc(50% - 350px);right:calc(50% - 350px)}
+}
+</style>
+</head>
+<body>
+<div id="game"></div>
+
+<div id="logo">⚔️ ANIME LEGENDS ⚡</div>
+
+<div id="hud">
+  <div class="panel">
+    <div class="name">🥷 SHADOW WARRIOR</div>
+    <div class="bar"><div class="fill" id="hp"></div></div>
+    <div id="hptext">HP 100/100</div>
+  </div>
+  <div class="panel">
+    <div class="name" id="enemyname">🐉 SHADOW BEAST</div>
+    <div class="bar"><div class="fill enemyfill" id="ehp"></div></div>
+    <div id="ehptext">HP 100/100</div>
+  </div>
+</div>
+
+<div id="level">LEVEL 1 / 50</div>
+<div id="message"></div>
+
+<div id="bottominfo">MOVE • JUMP • ATTACK • DEFEAT THE BOSS</div>
+
+<div id="controls">
+  <div id="move">
+    <button id="jump">⬆️</button>
+    <button id="left">⬅️</button>
+    <button id="right">➡️</button>
+  </div>
+  <div id="actions">
+    <button id="attack">👊 PUNCH</button>
+    <button id="special">⚡ POWER</button>
+    <button id="ultimate">🔥 ULTIMATE</button>
+  </div>
+</div>
+
+<div id="start">
+  <div style="font-size:65px">🥷⚡🐉</div>
+  <h1>ANIME LEGENDS</h1>
+  <h2>MONSTER WAR</h2>
+  <p>
+    🔥 50 BATTLE LEVELS<br>
+    👹 50 Different Monster Challenges<br>
+    ⚔️ Punch • Power • Ultimate<br>
+    🏆 Defeat every boss to become the legend!
+  </p>
+  <button id="play">▶ START GAME</button>
+  <p style="font-size:12px">3D BATTLE ARENA • MOBILE FRIENDLY</p>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+<script>
+(() => {
+"use strict";
+
+const $ = id => document.getElementById(id);
+const monsterNames = [
+"Shadow Beast","Fire Tiger","Ice Wolf","Dark Ghost","Stone Golem",
+"Venom Serpent","Thunder Oni","Blood Panther","Frost Demon","Flame Dragon",
+"Phantom Knight","Crystal Spider","Storm Eagle","Lava Brute","Moon Werewolf",
+"Poison Hydra","Dark Samurai","Iron Minotaur","Soul Reaper","Thunder Dragon",
+"Sand Titan","Night Stalker","Frost Giant","Chaos Beast","Inferno Demon",
+"Shadow Ninja","Void Specter","War Tiger","Doom Knight","Ancient Dragon",
+"Cyber Demon","Spirit Fox","Abyss Monster","Blazing Ogre","Storm Guardian",
+"Death Phantom","Crystal Golem","Hellhound","Dark Phoenix","Dragon Emperor",
+"Cosmic Beast","Thunder King","Demon Samurai","Ice Dragon","Soul Eater",
+"Nightmare Lord","Chaos Dragon","Void King","Demon Overlord","ETERNAL DESTROYER"
+];
+
+let scene,camera,renderer,clock;
+let hero,enemy,heroParts=[],enemyParts=[];
+let level=1,playerHP=100,enemyHP=100;
+let running=false,ended=false,busy=false;
+let attackCooldown=0,specialCooldown=0,ultimateCooldown=0;
+let jumpVelocity=0,groundY=0;
+const keys={left:false,right:false};
+let effects=[],particles=[],stars;
+let heroX=-2.2,enemyX=2.2;
+let heroMat,enemyMat;
+
+function makeMaterial(color,emissive=0x000000,roughness=.5){
+ return new THREE.MeshStandardMaterial({color,emissive,roughness,metalness:.15});
+}
+function box(parent,w,h,d,mat,x,y,z){
+ const mesh=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat);
+ mesh.position.set(x,y,z);parent.add(mesh);return mesh;
+}
+function sphere(parent,r,mat,x,y,z){
+ const mesh=new THREE.Mesh(new THREE.SphereGeometry(r,16,12),mat);
+ mesh.position.set(x,y,z);parent.add(mesh);return mesh;
+}
+function limb(parent,a,b,r1,r2,mat){
+ const A=new THREE.Vector3(...a),B=new THREE.Vector3(...b);
+ const dir=new THREE.Vector3().subVectors(B,A);
+ const mesh=new THREE.Mesh(new THREE.CylinderGeometry(r2,r1,dir.length(),10),mat);
+ mesh.position.copy(A).add(B).multiplyScalar(.5);
+ mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),dir.normalize());
+ parent.add(mesh);return mesh;
+}
+function buildFighter(isHero){
+ const g=new THREE.Group();
+ const skin=makeMaterial(isHero?0xffc69b:0x8274b0);
+ const outfit=makeMaterial(isHero?0x17233f:0x40113f,isHero?0x102c88:0x640022);
+ const glow=makeMaterial(isHero?0x00eeff:0xff1744,isHero?0x0077ff:0xaa001f);
+ const hair=makeMaterial(isHero?0x111827:0x260b30);
+ const metal=makeMaterial(0xc5e8ff,0x183b66,.25);
+
+ // Legs, boots and body
+ limb(g,[-.23,.88,0],[-.28,.35,0],.12,.075,outfit);
+ limb(g,[.23,.88,0],[.28,.35,0],.12,.075,outfit);
+ box(g,.23,.15,.32,metal,-.28,.22,.07);
+ box(g,.23,.15,.32,metal,.28,.22,.07);
+ box(g,.64,.72,.34,outfit,0,1.17,0);
+ box(g,.68,.13,.38,glow,0,1.48,0);
+ // Arms
+ limb(g,[-.34,1.42,0],[-.58,1.08,0],.12,.09,outfit);
+ limb(g,[.34,1.42,0],[.58,1.12,0],.12,.09,outfit);
+ sphere(g,.12,skin,-.58,1.05,.02);
+ sphere(g,.12,skin,.58,1.10,.02);
+ // Head and face
+ sphere(g,.30,skin,0,1.90,0);
+ sphere(g,.32,hair,0,2.09,-.035);
+ // Spiky hair
+ for(let i=0;i<7;i++){
+  const a=(i/7)*Math.PI*2;
+  const spike= new THREE.Mesh(new THREE.ConeGeometry(.105,.33,6),hair);
+  spike.position.set(Math.cos(a)*.22,2.30,Math.sin(a)*.19);
+  spike.rotation.z=-Math.cos(a)*.65;
+  spike.rotation.x=Math.sin(a)*.5;
+  g.add(spike);
+ }
+ // Anime eyes
+ box(g,.105,.045,.035,glow,-.115,1.94,.269);
+ box(g,.105,.045,.035,glow,.115,1.94,.269);
+ // Shoulder armor
+ sphere(g,.17,metal,-.37,1.44,0);
+ sphere(g,.17,metal,.37,1.44,0);
+ // Back energy aura
+ const aura=new THREE.Mesh(
+  new THREE.TorusGeometry(.53,.035,8,32),
+  new THREE.MeshBasicMaterial({color:isHero?0x00eeff:0xff1744,transparent:true,opacity:.55})
+ );
+ aura.position.set(0,1.18,-.20);
+ g.add(aura);
+ g.userData={glow,aura,arms:[],isHero};
+ g.traverse(o=>{if(o.isMesh)o.castShadow=true});
+ return g;
+}
+function makeArena(){
+ const floor=new THREE.Mesh(
+  new THREE.CylinderGeometry(8,8,.3,64),
+  makeMaterial(0x11182d,0x050b28,.35)
+ );
+ floor.position.y=-.17;floor.receiveShadow=true;scene.add(floor);
+ const ring=new THREE.Mesh(
+  new THREE.TorusGeometry(6,.045,8,100),
+  new THREE.MeshBasicMaterial({color:0x00d9ff})
+ );
+ ring.rotation.x=Math.PI/2;ring.position.y=.02;scene.add(ring);
+ for(let i=0;i<16;i++){
+  const a=i*Math.PI/8;
+  const h=1.8+Math.random()*2.5;
+  const p=box(scene,.25,h,.25,makeMaterial(i%2?0x202d52:0x321d54,0x080d32),
+  Math.sin(a)*7,h/2,Math.cos(a)*7);
+  p.rotation.y=-a;
+  const light=new THREE.PointLight(i%2?0x0055ff:0x9b00ff,1.4,4);
+  light.position.set(Math.sin(a)*7,h,Math.cos(a)*7);scene.add(light);
+ }
+ // Glowing horizon
+ const horizon=new THREE.Mesh(
+  new THREE.SphereGeometry(45,32,20),
+  new THREE.MeshBasicMaterial({color:0x080b1c,side:THREE.BackSide})
+ );
+ scene.add(horizon);
+ // Stars
+ const pos=[];
+ for(let i=0;i<500;i++){
+  pos.push((Math.random()-.5)*65,Math.random()*24+2,(Math.random()-.5)*65);
+ }
+ const geo=new THREE.BufferGeometry();
+ geo.setAttribute("position",new THREE.Float32BufferAttribute(pos,3));
+ stars=new THREE.Points(geo,new THREE.PointsMaterial({color:0x9cefff,size:.07}));
+ scene.add(stars);
+}
+function init(){
+ scene=new THREE.Scene();
+ scene.background=new THREE.Color(0x080b1c);
+ scene.fog=new THREE.Fog(0x080b1c,16,36);
+ camera=new THREE.PerspectiveCamera(50,innerWidth/innerHeight,.1,100);
+ camera.position.set(0,5.1,11.8);
+ camera.lookAt(0,1,0);
+ renderer=new THREE.WebGLRenderer({antialias:true,alpha:false});
+ renderer.setPixelRatio(Math.min(devicePixelRatio,1.8));
+ renderer.setSize(innerWidth,innerHeight);
+ renderer.shadowMap.enabled=true;
+ renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+ renderer.toneMapping=THREE.ACESFilmicToneMapping;
+ renderer.toneMappingExposure=1.2;
+ $("game").appendChild(renderer.domElement);
+ clock=new THREE.Clock();
+ scene.add(new THREE.HemisphereLight(0x9ccfff,0x160d2b,2));
+ const sun=new THREE.DirectionalLight(0xffffff,3);
+ sun.position.set(-4,9,6);sun.castShadow=true;scene.add(sun);
+ const rim=new THREE.PointLight(0x005dff,25,22);
+ rim.position.set(-4,4,-3);scene.add(rim);
+ const rim2=new THREE.PointLight(0xff007b,18,18);
+ rim2.position.set(4,3,-2);scene.add(rim2);
+ makeArena();
+ hero=buildFighter(true);scene.add(hero);
+ hero.position.set(heroX,0,0);
+ enemy=buildFighter(false);scene.add(enemy);
+ enemy.position.set(enemyX,0,-.1);
+ buildEnemy(1);
+ addEvents();
+ window.addEventListener("resize",resize);
+ animate();
+}
+function buildEnemy(n){
+ if(!enemy)return;
+ const colors=[
+  0xff1744,0xff7400,0x44aaff,0x8d54ff,0x70ff40,
+  0xff22b0,0xffd700,0x00ffbd
+ ];
+ const c=colors[(n-1)%colors.length];
+ enemy.userData.glow.color.setHex(c);
+ enemy.userData.aura.material.color.setHex(c);
+ enemy.scale.setScalar(1+Math.min(n*.012,.7));
+ enemyHP=100+Math.floor((n-1)*13);
+ enemyX=2.2;enemy.position.set(enemyX,0,-.1);
+ $("enemyname").textContent="👹 "+monsterNames[n-1];
+ updateHUD();
+}
+function updateHUD(){
+ $("hp").style.width=Math.max(0,playerHP/100*100)+"%";
+ $("ehp").style.width=Math.max(0,enemyHP/(100+Math.floor((level-1)*13))*100)+"%";
+ $("hptext").textContent="HP "+Math.max(0,Math.ceil(playerHP))+"/100";
+ $("ehptext").textContent="HP "+Math.max(0,Math.ceil(enemyHP))+"/"+(100+Math.floor((level-1)*13));
+ $("level").textContent="LEVEL "+level+" / 50";
+}
+function say(text,duration=1000){
+ $("message").textContent=text;
+ clearTimeout(say.timer);
+ say.timer=setTimeout(()=>{$("message").textContent=""},duration);
+}
+function burst(x,y,z,color,count=14){
+ for(let i=0;i<count;i++){
+  const mesh=new THREE.Mesh(
+   new THREE.SphereGeometry(.035+Math.random()*.06,6,6),
+   new THREE.MeshBasicMaterial({color,transparent:true})
+  );
+  mesh.position.set(x,y,z);scene.add(mesh);
+  particles.push({mesh,life:.35+Math.random()*.6,
+   vx:(Math.random()-.5)*5,vy:Math.random()*5,vz:(Math.random()-.5)*3});
+ }
+}
+function ringEffect(x,z,color){
+ const mesh=new THREE.Mesh(
+  new THREE.TorusGeometry(.35,.055,8,24),
+  new THREE.MeshBasicMaterial({color,transparent:true,opacity:1})
+ );
+ mesh.rotation.x=Math.PI/2;mesh.position.set(x,.8,z);scene.add(mesh);
+ effects.push({mesh,life:.45,max:.45,ring:true});
+}
+function attack(type){
+ if(!running||ended||busy)return;
+ const now=performance.now();
+ if(type==="punch"&&now<attackCooldown)return;
+ if(type==="special"&&now<specialCooldown)return;
+ if(type==="ultimate"&&now<ultimateCooldown)return;
+ let damage=0,color=0;
+ if(type==="punch"){
+  attackCooldown=now+450;damage=12; color=0x00eaff;
+  say("👊 COMBO HIT!",500);
+ }else if(type==="special"){
+  specialCooldown=now+2300;damage=27;color=0xa000ff;
+  say("⚡ ENERGY BLAST!",700);
+ }else{
+  ultimateCooldown=now+6000;damage=50;color=0xffbd00;
+  say("🔥 ULTIMATE POWER!",1000);
+ }
+ const dist=Math.abs(hero.position.x-enemy.position.x);
+ if(dist>3.5){
+  say("⚠️ MOVE CLOSER!",600);return;
+ }
+ enemyHP-=damage;
+ burst(enemy.position.x,1.3,0,color, type==="ultimate"?35:18);
+ ringEffect(enemy.position.x,0,color);
+ if(type==="special"||type==="ultimate"){
+  const orb=new THREE.Mesh(new THREE.SphereGeometry(type==="ultimate"?.4:.22,16,12),
+   new THREE.MeshBasicMaterial({color}));
+  orb.position.set(hero.position.x,1.5,.2);scene.add(orb);
+  effects.push({mesh:orb,life:.25,max:.25,projectile:true,target:enemy.position.x});
+ }
+ enemy.position.x+=.17;
+ if(enemyHP<=0){
+  enemyHP=0;updateHUD();victory();return;
+ }
+ updateHUD();
+}
+function victory(){
+ if(ended)return;
+ busy=true;
+ burst(enemy.position.x,1.5,0,0xffd700,45);
+ if(level>=50){
+  ended=true;running=false;
+  $("start").style.display="flex";
+  $("start").innerHTML=`<div style="font-size:70px">👑🏆🔥</div>
+   <h1>ANIME LEGEND!</h1><h2>ALL 50 LEVELS CLEARED</h2>
+   <p>You defeated the Eternal Destroyer!<br>Share your victory with your friends.</p>
+   <button id="play">🔄 PLAY AGAIN</button>`;
+  $("play").onclick=resetGame;
+  saveProgress(50);
+  return;
+ }
+ level++;
+ saveProgress(level-1);
+ say("🏆 VICTORY! LEVEL "+level,1700);
+ playerHP=Math.min(100,playerHP+25);
+ setTimeout(()=>{
+  if(!running)return;
+  buildEnemy(level);
+  busy=false;
+  say("⚔️ "+monsterNames[level-1],1200);
+ },1000);
+}
+function enemyAI(dt){
+ if(!running||ended||busy)return;
+ const dist=hero.position.x-enemy.position.x;
+ if(Math.abs(dist)>1.65){
+  enemy.position.x+=Math.sign(dist)*dt*.65;
+  enemy.position.x=Math.max(-5,Math.min(5,enemy.position.x));
+ }else if(Math.random()<dt*.75){
+  playerHP-=Math.max(2,5+level*.12);
+  playerHP=Math.max(0,playerHP);
+  burst(hero.position.x,1.1,0,0xff2244,5);
+  updateHUD();
+  if(playerHP<=0){
+   ended=true;running=false;
+   $("start").style.display="flex";
+   $("start").innerHTML=`<div style="font-size:65px">💀⚔️</div>
+    <h1>GAME OVER</h1><h2>LEVEL ${level}</h2>
+    <p>Train your warrior and fight again!</p>
+    <button id="play">🔄 RETRY LEVEL</button>`;
+   $("play").onclick=()=>{playerHP=100;ended=false;busy=false;running=true;
+    $("start").style.display="none";buildEnemy(level);say("⚔️ LEVEL "+level);};
+  }
+ }
+}
+function saveProgress(n){
+ try{localStorage.setItem("animeLegendsLevel",String(Math.max(n,Number(localStorage.getItem("animeLegendsLevel")||1))));}catch(e){}
+}
+function resetGame(){
+ level=1;playerHP=100;enemyHP=100;heroX=-2.2;
+ hero.position.set(heroX,0,0);ended=false;busy=false;running=true;
+ $("start").style.display="none";buildEnemy(level);updateHUD();say("⚔️ FIGHT!",900);
+}
+function addEvents(){
+ $("play").onclick=resetGame;
+ const bind=(id,down,up)=>{
+  const b=$(id);
+  b.addEventListener("pointerdown",e=>{e.preventDefault();down();});
+  b.addEventListener("pointerup",e=>{e.preventDefault();if(up)up();});
+  b.addEventListener("pointerleave",()=>{if(up)up();});
+  b.addEventListener("pointercancel",()=>{if(up)up();});
+ };
+ bind("left",()=>keys.left=true,()=>keys.left=false);
+ bind("right",()=>keys.right=true,()=>keys.right=false);
+ bind("jump",()=>{
+  if(running&&hero.position.y<=.01)jumpVelocity=6;
+ });
+ bind("attack",()=>attack("punch"));
+ bind("special",()=>attack("special"));
+ bind("ultimate",()=>attack("ultimate"));
+ window.addEventListener("keydown",e=>{
+  if(e.key==="ArrowLeft"||e.key==="a")keys.left=true;
+  if(e.key==="ArrowRight"||e.key==="d")keys.right=true;
+  if((e.key==="ArrowUp"||e.key===" ")&&hero.position.y<=.01)jumpVelocity=6;
+  if(e.key==="j")attack("punch");
+  if(e.key==="k")attack("special");
+  if(e.key==="l")attack("ultimate");
+ });
+ window.addEventListener("keyup",e=>{
+  if(e.key==="ArrowLeft"||e.key==="a")keys.left=false;
+  if(e.key==="ArrowRight"||e.key==="d")keys.right=false;
+ });
+}
+function resize(){
+ if(!camera||!renderer)return;
+ camera.aspect=innerWidth/innerHeight;
+ camera.updateProjectionMatrix();
+ renderer.setSize(innerWidth,innerHeight);
+}
+function animate(){
+ requestAnimationFrame(animate);
+ const dt=Math.min(clock.getDelta(),.04);
+ const t=clock.elapsedTime;
+ if(stars)stars.rotation.y+=dt*.008;
+ if(hero&&enemy){
+  hero.userData.aura.rotation.z+=dt*1.2;
+  enemy.userData.aura.rotation.z-=dt*1.5;
+  if(running&&!ended){
+   if(keys.left)hero.position.x-=dt*3;
+   if(keys.right)hero.position.x+=dt*3;
+   hero.position.x=Math.max(-5,Math.min(5,hero.position.x));
+   heroX=hero.position.x;
+   if(jumpVelocity!==0||hero.position.y>0){
+    hero.position.y+=jumpVelocity*dt;
+    jumpVelocity-=15*dt;
+    if(hero.position.y<=0){hero.position.y=0;jumpVelocity=0;}
+   }
+   enemyAI(dt);
+  }
+  hero.rotation.y=0;
+  enemy.rotation.y=Math.PI;
+  hero.position.z=Math.sin(t*2)*.035;
+  enemy.position.y=Math.sin(t*3)*.045;
+  camera.position.x+=(hero.position.x*.15-camera.position.x)*dt;
+  camera.lookAt(hero.position.x*.12,1,0);
+ }
+ for(let i=effects.length-1;i>=0;i--){
+  const e=effects[i];e.life-=dt;
+  if(e.projectile){
+   e.mesh.position.x+=(e.target-e.mesh.position.x)*Math.min(1,dt*12);
+  }else if(e.ring){
+   const s=1+(1-e.life/e.max)*3;e.mesh.scale.setScalar(s);
+   e.mesh.material.opacity=Math.max(0,e.life/e.max);
+  }
+  if(e.life<=0){scene.remove(e.mesh);e.mesh.geometry.dispose();effects.splice(i,1);}
+ }
+ for(let i=particles.length-1;i>=0;i--){
+  const p=particles[i];p.life-=dt;
+  p.mesh.position.x+=p.vx*dt;p.mesh.position.y+=p.vy*dt;
+  p.mesh.position.z+=p.vz*dt;p.vy-=8*dt;
+  if(p.life<=0){scene.remove(p.mesh);p.mesh.geometry.dispose();p.mesh.material.dispose();particles.splice(i,1);}
+ }
+ if(renderer&&scene&&camera)renderer.render(scene,camera);
+}
+try{init();}catch(e){
+ $("start").style.display="flex";
+ $("start").innerHTML="<h1>⚠️ GAME LOADING</h1><p>Please open this project with internet access and WebGL enabled.</p><button onclick='location.reload()'>RELOAD</button>";
+ console.error(e);
+}
+})();
+</script>
+</body>
+</html>
